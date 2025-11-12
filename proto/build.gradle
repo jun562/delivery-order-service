@@ -11,11 +11,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.grpc:grpc-protobuf:1.60.0'
-    implementation 'io.grpc:grpc-stub:1.60.0'
+    implementation 'io.grpc:grpc-protobuf:1.76.0'
+    implementation 'io.grpc:grpc-stub:1.76.0'
 
     // Java에서 Protobuf 메시지를 사용하기 위한 라이브러리
-    implementation 'com.google.protobuf:protobuf-java:4.28.2'
+    implementation 'com.google.protobuf:protobuf-java:3.25.8'
 
     // javax.annotation.Generated 어노테이션을 위한 의존성
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
@@ -23,14 +23,12 @@ dependencies {
 
 protobuf {
     protoc {
-        // gRPC 코드를 생성할 protoc 컴파일러 다운로드
-        artifact = 'com.google.protobuf:protoc:3.25.1'
+        artifact = 'com.google.protobuf:protoc:3.25.8'
     }
-
     plugins {
         // gRPC 자바 플러그인 설정
         grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.60.0'
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.76.0'
         }
     }
 
@@ -42,9 +40,14 @@ protobuf {
     }
 }
 
-sourceSets.main.java {
-    srcDirs += [
-            '$buildDir/generated/source/proto/main/java',
-            '$buildDir/generated/source/proto/main/grpc'
-    ]
+sourceSets {
+    main {
+        java {
+            srcDirs(
+                    "$buildDir/generated/source/proto/main/java",
+                    "$buildDir/generated/source/proto/main/grpc"
+            )
+        }
+    }
+
 }
