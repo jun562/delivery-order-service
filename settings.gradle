@@ -1,2 +1,3 @@
 rootProject.name = 'delivery-order-service'
+include 'proto'
 
