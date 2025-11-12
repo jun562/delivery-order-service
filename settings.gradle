@@ -1,3 +1,5 @@
 rootProject.name = 'delivery-order-service'
 include 'proto'
+include 'web-server'
+include 'order-server'
 
