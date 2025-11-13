@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+
+option java_package = "com.jun.grpc.simple";
+
+option java_multiple_files = true;
+
+
+service SimpleService {
+  rpc Greet(GreetRequest) returns (GreetResponse);
+}
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string message = 1;
+}
