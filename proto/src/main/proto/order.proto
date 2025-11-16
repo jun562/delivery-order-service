@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+
+option java_package = "com.jun.grpc.order";
+
+option java_multiple_files = true;
+
+
+service OrderService {
+  rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+}
+
+message CreateOrderRequest {
+  string customerId = 1;
+  string restaurantId = 2;
+  string menuName = 3;
+  int32 price = 4;
+}
+
+message CreateOrderResponse {
+  string orderId = 1;
+  string status = 2; // 주문 상태
+  string message = 3; // 결과 메시지
+}
