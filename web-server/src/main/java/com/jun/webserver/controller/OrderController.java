@@ -4,12 +4,14 @@ import com.jun.grpc.order.CreateOrderRequest;
 import com.jun.grpc.order.CreateOrderResponse;
 import com.jun.grpc.order.OrderServiceGrpc;
 import com.jun.webserver.dto.OrderRequestDto;
-import org.springframework.stereotype.Controller;
+import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 public class OrderController {
+    @GrpcClient("order-service")
     private OrderServiceGrpc.OrderServiceBlockingStub orderStub;
 
     @PostMapping("/orders")

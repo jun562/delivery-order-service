@@ -54,6 +54,43 @@
 
 <hr/>
 
+<hr/>
+
+<h3>🍗 메뉴 주문</h3>
+<div>
+    메뉴: <input type="text" id="menuName" value="황금올리브 치킨">
+    가격: <input type="number" id="price" value="23000">
+    <button onclick="order()">주문하기</button>
+</div>
+<div id="order-result" style="color: blue; font-weight: bold; margin-top: 10px;"></div>
+
+<hr/>
+<script>
+    function order() {
+        var menu = document.getElementById("menuName").value;
+        var price = document.getElementById("price").value;
+
+        fetch('/orders', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                customerId: document.getElementById("sender").value,
+                restaurantId: "store1",
+                menuName: menu,
+                price: parseInt(price)
+            })
+        })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById("order-result").innerText = "✅ " + data;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById("order-result").innerText = "주문 실패";
+            });
+    }
+</script>
+
 <div id="chat-box"></div>
 
 <script>
