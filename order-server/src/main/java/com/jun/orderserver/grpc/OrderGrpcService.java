@@ -3,11 +3,14 @@ package com.jun.orderserver.grpc;
 import com.jun.grpc.order.CreateOrderRequest;
 import com.jun.grpc.order.CreateOrderResponse;
 import com.jun.grpc.order.OrderServiceGrpc.OrderServiceImplBase;
+import com.jun.grpc.order.UpdateOrderStatusRequest;
+import com.jun.grpc.order.UpdateOrderStatusResponse;
 import com.jun.orderserver.domain.Order;
 import com.jun.orderserver.repository.OrderRepository;
 import io.grpc.stub.StreamObserver;
 import java.util.UUID;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.springframework.transaction.annotation.Transactional;
 
 @GrpcService
 public class OrderGrpcService extends OrderServiceImplBase {
@@ -26,6 +29,24 @@ public class OrderGrpcService extends OrderServiceImplBase {
         saveOrder(order, orderId);
 
         responseObserver.onNext(createResponse(orderId));
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    @Transactional
+    public void updateOrderStatus(UpdateOrderStatusRequest request,
+                                  StreamObserver<UpdateOrderStatusResponse> responseObserver) {
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new RuntimeException("주문 내역을 찾을 수 없습니다."));
+
+        order.changeStatus(request.getStatus());
+
+        UpdateOrderStatusResponse response = UpdateOrderStatusResponse.newBuilder()
+                .setOrderId(order.getOrderId())
+                .setStatus(order.getStatus())
+                .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
