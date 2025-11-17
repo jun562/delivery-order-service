@@ -1,6 +1,6 @@
 package com.jun.webserver.controller;
 
-import com.jun.webserver.dto.ChatMessage;
+import com.jun.webserver.dto.ChatMessageDto;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
@@ -11,7 +11,7 @@ public class ChatController {
     @MessageMapping("/chat")
     // 반환 값을 "/sub/chat" 을 구독 중인 모든 클라이언트에게 전달
     @SendTo("/sub/chat")
-    public ChatMessage sendMessage(ChatMessage message) {
+    public ChatMessageDto sendMessage(ChatMessageDto message) {
         System.out.println("채팅 수신: " + message.getContent() + " from " + message.getSender());
         return message;
     }
