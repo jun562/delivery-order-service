@@ -98,7 +98,7 @@
                 document.getElementById("order-result").innerText = "주문 실패";
             });
     }
-    
+
     function connectOwner() {
         var socket = new SockJS('/ws-stomp');
         var ownerClient = Stomp.over(socket);
@@ -109,9 +109,33 @@
 
             // ⭐️ "/sub/orders" 채널 구독! (Controller가 여기로 쏨)
             ownerClient.subscribe('/sub/orders', function (msg) {
-                // 알림이 오면 화면에 표시
-                document.getElementById("notification-box").innerHTML += "<br/>" + msg.body;
+                var messageBody = msg.body;
+                if (messageBody.includes("새 주문")) {
+                    // 메시지에서 주문번호 추출 (간단 파싱)
+                    var orderId = messageBody.split("주문번호: ")[1];
+
+                    var html = `
+                            <div style="border-bottom:1px solid #eee; padding:5px;">
+                                ${messageBody}
+                                <button onclick="acceptOrder('${orderId}')" style="background:red; color:white;">수락하기</button>
+                            </div>
+                        `;
+                    document.getElementById("notification-box").innerHTML += html;
+                } else {
+                    // 일반 알림 (조리 중 등)
+                    document.getElementById("notification-box").innerHTML += "<div style='color:green'>" + messageBody + "</div>";
+                }
             });
+        });
+    }
+
+    function acceptOrder(orderId) {
+        fetch('/orders/accept', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}, // 헤더 명시
+            body: JSON.stringify({"orderId": orderId})     // 👈 객체로 묶어서 전송!
+        }).then(() => {
+            alert("주문을 수락했습니다! (조리 시작)");
         });
     }
 </script>
