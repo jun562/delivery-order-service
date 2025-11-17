@@ -65,6 +65,15 @@
 <div id="order-result" style="color: blue; font-weight: bold; margin-top: 10px;"></div>
 
 <hr/>
+
+<div style="background-color: #f0f8ff; padding: 10px; border: 2px dashed blue;">
+    <h3>👨‍🍳 사장님 모드 (주문 알림)</h3>
+    <button onclick="connectOwner()">가게 오픈 (알림 받기)</button>
+    <div id="notification-box" style="color: red; font-weight: bold; margin-top: 10px;">
+        (아직 주문 없음)
+    </div>
+</div>
+
 <script>
     function order() {
         var menu = document.getElementById("menuName").value;
@@ -88,6 +97,22 @@
                 console.error('Error:', error);
                 document.getElementById("order-result").innerText = "주문 실패";
             });
+    }
+    
+    function connectOwner() {
+        var socket = new SockJS('/ws-stomp');
+        var ownerClient = Stomp.over(socket);
+
+        ownerClient.connect({}, function (frame) {
+            console.log('Owner Connected: ' + frame);
+            alert("가게 오픈! 주문을 기다립니다.");
+
+            // ⭐️ "/sub/orders" 채널 구독! (Controller가 여기로 쏨)
+            ownerClient.subscribe('/sub/orders', function (msg) {
+                // 알림이 오면 화면에 표시
+                document.getElementById("notification-box").innerHTML += "<br/>" + msg.body;
+            });
+        });
     }
 </script>
 
