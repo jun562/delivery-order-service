@@ -1,40 +1,45 @@
 package com.jun.webserver;
 
-import com.jun.grpc.simple.GreetRequest;
-import com.jun.grpc.simple.GreetResponse;
-import com.jun.grpc.simple.SimpleServiceGrpc;
+import com.jun.grpc.order.CreateOrderRequest;
+import com.jun.grpc.order.CreateOrderResponse;
+import com.jun.grpc.order.OrderServiceGrpc;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-// 스프링 앱 구동 시 바로 실행
 @Component
 public class GrpcClientRunner implements CommandLineRunner {
-    // gRPC 클라이언트 Stub 주입
+
+    // 변경된 Stub 이름 확인!
     @GrpcClient("order-service")
-    private SimpleServiceGrpc.SimpleServiceBlockingStub simpleStub;
+    private OrderServiceGrpc.OrderServiceBlockingStub orderStub;
 
     @Override
     public void run(String... args) throws Exception {
         System.out.println("========================================");
-        System.out.println("[web-server] gRPC 요청 보낼 준비 완료");
 
         try {
-            // 요청 데이터 생성
-            GreetRequest request = GreetRequest.newBuilder().setName("Web-Server").build();
-            // gRPC 호출 ( 9090 포트로 전송 )
-            // 응답이 올 때 까지 기다림
-            System.out.println("[web-server] order-server에게 요청 보내는 중...");
-            GreetResponse response = simpleStub.greet(request);
+            // 주문 생성 테스트 데이터
+            CreateOrderRequest request = CreateOrderRequest.newBuilder()
+                    .setCustomerId("customer1")
+                    .setRestaurantId("store1")
+                    .setMenuName("황금올리브 치킨")
+                    .setPrice(23000)
+                    .build();
 
-            // 응답 확인("[
-            System.out.println("[web-server] 응답 받음: " + response.getMessage());
+            System.out.println("📤 [web-server] 치킨 주문 전송 중...");
 
+            // gRPC 호출
+            CreateOrderResponse response = orderStub.createOrder(request);
+
+            System.out.println("📥 [web-server] 주문 결과 수신!");
+            System.out.println(" - Order ID: " + response.getOrderId());
+            System.out.println(" - Status: " + response.getStatus());
 
         } catch (Exception e) {
-            System.err.println("[web-server] gRPC 호출 실패");
-            e.printStackTrace();
+            System.err.println("❌ 통신 실패: " + e.getMessage());
         }
-        System.out.println("======================================");
+
+        System.out.println("========================================");
     }
 }
