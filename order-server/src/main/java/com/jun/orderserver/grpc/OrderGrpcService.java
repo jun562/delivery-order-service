@@ -56,7 +56,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
                 .restaurantId(request.getRestaurantId())
                 .menuName(request.getMenuName())
                 .price(request.getPrice())
-                .status("PENDING") // 초기 상태: 대기 중
+                .status("주문 확인중")
                 .build();
 
     }
