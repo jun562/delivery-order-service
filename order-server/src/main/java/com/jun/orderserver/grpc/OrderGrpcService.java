@@ -41,12 +41,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
 
         order.changeStatus(request.getStatus());
 
-        UpdateOrderStatusResponse response = UpdateOrderStatusResponse.newBuilder()
-                .setOrderId(order.getOrderId())
-                .setStatus(order.getStatus())
-                .build();
-
-        responseObserver.onNext(response);
+        responseObserver.onNext(createUpdatedOrderResponse(order));
         responseObserver.onCompleted();
     }
 
@@ -79,4 +74,10 @@ public class OrderGrpcService extends OrderServiceImplBase {
                 .build();
     }
 
+    private UpdateOrderStatusResponse createUpdatedOrderResponse(Order order) {
+        return UpdateOrderStatusResponse.newBuilder()
+                .setOrderId(order.getOrderId())
+                .setStatus(order.getStatus())
+                .build();
+    }
 }
