@@ -25,4 +25,8 @@ public class Order {
     private String menuName;
     private Integer price;
     private String status;
+
+    public void changeStatus(String newStatus) {
+        this.status = newStatus;
+    }
 }
