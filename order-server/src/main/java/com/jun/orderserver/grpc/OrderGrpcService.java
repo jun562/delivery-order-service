@@ -16,10 +16,21 @@ public class OrderGrpcService extends OrderServiceImplBase {
 
     @Override
     public void createOrder(CreateOrderRequest request, StreamObserver<CreateOrderResponse> responseObserver) {
+        String orderId = createId();
+        Order order = buildOrder(orderId, request);
 
-        String orderId = UUID.randomUUID().toString();
+        saveOrder(order, orderId);
 
-        Order order = Order.builder()
+        responseObserver.onNext(createResponse(orderId));
+        responseObserver.onCompleted();
+    }
+
+    private String createId() {
+        return UUID.randomUUID().toString();
+    }
+
+    private Order buildOrder(String orderId, CreateOrderRequest request) {
+        return Order.builder()
                 .orderId(orderId)
                 .customerId(request.getCustomerId())
                 .restaurantId(request.getRestaurantId())
@@ -28,17 +39,19 @@ public class OrderGrpcService extends OrderServiceImplBase {
                 .status("PENDING") // 초기 상태: 대기 중
                 .build();
 
-        orderRepository.save(order);
-        System.out.println("💾 [DB 저장 완료] Order ID: " + orderId);
+    }
 
-        CreateOrderResponse response = CreateOrderResponse.newBuilder()
+    private void saveOrder(Order order, String orderId) {
+        orderRepository.save(order);
+        System.out.println("[DB 저장 완료] Order ID: " + orderId);
+    }
+
+    private CreateOrderResponse createResponse(String orderId) {
+        return CreateOrderResponse.newBuilder()
                 .setOrderId(orderId)
                 .setStatus("PENDING")
                 .setMessage("주문이 성공적으로 접수되었습니다.")
                 .build();
-        
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
     }
 
 }
