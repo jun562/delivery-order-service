@@ -8,6 +8,7 @@ option java_multiple_files = true;
 
 service OrderService {
   rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+  rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
 }
 
 message CreateOrderRequest {
@@ -21,4 +22,14 @@ message CreateOrderResponse {
   string orderId = 1;
   string status = 2; // 주문 상태
   string message = 3; // 결과 메시지
+}
+
+message UpdateOrderStatusRequest {
+  string orderId = 1;
+  string status = 2;
+}
+
+message UpdateOrderStatusResponse {
+  string orderId = 1;
+  string status = 2;
 }
