@@ -12,7 +12,11 @@ import net.devh.boot.grpc.server.service.GrpcService;
 @GrpcService
 public class OrderGrpcService extends OrderServiceImplBase {
 
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
+
+    OrderGrpcService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
 
     @Override
     public void createOrder(CreateOrderRequest request, StreamObserver<CreateOrderResponse> responseObserver) {
