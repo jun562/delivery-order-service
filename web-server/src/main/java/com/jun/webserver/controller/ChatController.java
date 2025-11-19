@@ -4,10 +4,14 @@ import com.jun.webserver.domain.ChatMessage;
 import com.jun.webserver.dto.ChatMessageDto;
 import com.jun.webserver.repository.ChatRepository;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,5 +33,18 @@ public class ChatController {
         chatRepository.save(message);
 
         return messageDto;
+    }
+
+    @GetMapping("/chat/{orderId}/history")
+    public List<ChatMessageDto> getChatHistory(@PathVariable String orderId) {
+        return chatRepository.findByOrderIdOrderByTimestampAsc(orderId)
+                .stream()
+                .map(message -> {
+                    ChatMessageDto dto = new ChatMessageDto();
+                    dto.setSender(message.getSender());
+                    dto.setContent(message.getContent());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }
