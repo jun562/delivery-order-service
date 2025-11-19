@@ -1,18 +1,33 @@
 package com.jun.webserver.controller;
 
+import com.jun.webserver.domain.ChatMessage;
 import com.jun.webserver.dto.ChatMessageDto;
+import com.jun.webserver.repository.ChatRepository;
+import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
+@RequiredArgsConstructor
 public class ChatController {
-    // 클라이언트가 "/pub/chat" 으로 메시지 보낼 시, 메서드 처리
-    @MessageMapping("/chat")
-    // 반환 값을 "/sub/chat" 을 구독 중인 모든 클라이언트에게 전달
-    @SendTo("/sub/chat")
-    public ChatMessageDto sendMessage(ChatMessageDto message) {
-        System.out.println("채팅 수신: " + message.getContent() + " from " + message.getSender());
-        return message;
+    private final ChatRepository chatRepository;
+
+    @MessageMapping("/chat/{orderId}")
+    // 해당 orderId 방에만 전송
+    @SendTo("/sub/chat/{orderId}")
+    public ChatMessageDto sendMessage(@DestinationVariable String orderId, ChatMessageDto messageDto) {
+        ChatMessage message = ChatMessage.builder()
+                .orderId(orderId)
+                .sender(messageDto.getSender())
+                .content(messageDto.getContent())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        chatRepository.save(message);
+
+        return messageDto;
     }
 }
