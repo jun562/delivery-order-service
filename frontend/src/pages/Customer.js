@@ -12,6 +12,7 @@ function Customer() {
     const [currentOrderId, setCurrentOrderId] = useState(null);
     // 기존 주문 불러오기용 입력값
     const [manualOrderId, setManualOrderId] = useState("");
+    const [isChatEnabled, setIsChatEnabled] = useState(false);
 
     // 1. 웹소켓 연결
     useEffect(() => {
@@ -22,7 +23,16 @@ function Customer() {
             console.log('Connected!');
 
             client.subscribe('/sub/orders', (msg) => {
-                if (msg.body.includes("조리 중")) alert(msg.body);
+                const body = msg.body;
+
+                if (body.includes("조리 중")) {
+                    alert("주문이 수락되었습니다! 채팅이 가능합니다.");
+                    setIsChatEnabled(true);
+                } else if (body.includes("취소되었습니다")) {
+                    alert("주문이 취소되었습니다.");
+                    setIsChatEnabled(false);
+                    setCurrentOrderId(null);
+                }
             });
         });
 
@@ -59,6 +69,11 @@ function Customer() {
 
     // 3. 메시지 전송
     const sendMessage = () => {
+        if (!isChatEnabled) {
+            alert("주문이 수락되어야 채팅할 수 있습니다!");
+            return;
+        }
+
         if (stompClient && inputMessage && currentOrderId) {
             stompClient.send(`/pub/chat/${currentOrderId}`, {}, JSON.stringify({
                 sender: "고객1",
@@ -133,18 +148,31 @@ function Customer() {
                 <button onClick={loadMyOrder} style={{marginLeft: '10px'}}>채팅방 재입장</button>
             </div>
 
-            <h3>💬 1:1 문의 ({currentOrderId ? "연결됨" : "주문 대기중"})</h3>
-            <div style={{
-                border: '1px solid #ddd',
-                padding: '10px',
-                height: '300px',
-                overflowY: 'scroll',
-                background: '#f9f9f9'
-            }}>
-                {messages.length === 0 &&
-                    <div style={{textAlign: 'center', color: '#999', marginTop: '100px'}}>대화 내용이 없습니다.</div>}
-                {messages.map((msg, idx) => (
-                    <div key={idx} style={{textAlign: msg.sender === '고객1' ? 'right' : 'left', margin: '5px'}}>
+            <h3>💬 1:1 문의 ({isChatEnabled ? "연결됨" : "주문 수락 대기중..."})</h3>
+
+            {!isChatEnabled ? (
+                <div style={{
+                    border: '1px solid #ddd',
+                    padding: '50px',
+                    textAlign: 'center',
+                    background: '#f0f0f0',
+                    color: '#888'
+                }}>
+                    ⏳ 사장님이 주문을 수락하면 채팅이 활성화됩니다.
+                </div>
+            ) : (
+                <div>
+                    <div style={{
+                        border: '1px solid #ddd',
+                        padding: '10px',
+                        height: '300px',
+                        overflowY: 'scroll',
+                        background: '#f9f9f9'
+                    }}>
+                        {messages.length === 0 &&
+                            <div style={{textAlign: 'center', color: '#999', marginTop: '100px'}}>대화 내용이 없습니다.</div>}
+                        {messages.map((msg, idx) => (
+                            <div key={idx} style={{textAlign: msg.sender === '고객1' ? 'right' : 'left', margin: '5px'}}>
             <span style={{
                 background: msg.sender === '고객1' ? '#ffeb3b' : '#fff',
                 padding: '5px 10px',
@@ -154,19 +182,21 @@ function Customer() {
             }}>
               <b>{msg.sender}:</b> {msg.content}
             </span>
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
-            <div style={{marginTop: '10px'}}>
-                <input
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="문의사항 입력..."
-                    style={{width: '70%', padding: '10px'}}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                />
-                <button onClick={sendMessage} style={{width: '25%', padding: '10px', marginLeft: '5px'}}>전송</button>
-            </div>
+                    <div style={{marginTop: '10px'}}>
+                        <input
+                            value={inputMessage}
+                            onChange={(e) => setInputMessage(e.target.value)}
+                            placeholder="문의사항 입력..."
+                            style={{width: '70%', padding: '10px'}}
+                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        />
+                        <button onClick={sendMessage} style={{width: '25%', padding: '10px', marginLeft: '5px'}}>전송
+                        </button>
+                    </div>
+                </div>)}
         </div>
     );
 }

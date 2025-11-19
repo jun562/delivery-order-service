@@ -4,13 +4,12 @@ import {Stomp} from '@stomp/stompjs';
 
 function Owner() {
     const [stompClient, setStompClient] = useState(null);
-    const [notifications, setNotifications] = useState([]); // 알림 로그
-    const [activeOrders, setActiveOrders] = useState([]);   // 현재 들어온 주문 목록 (채팅방 목록 역할)
+    const [notifications, setNotifications] = useState([]);
+    const [activeOrders, setActiveOrders] = useState([]);
 
     const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState("");
-
     const chatSubscriptionRef = useRef(null);
 
     // 1. 웹소켓 연결
@@ -23,17 +22,17 @@ function Owner() {
 
             client.subscribe('/sub/orders', (msg) => {
                 const body = msg.body;
-                setNotifications(prev => [body, ...prev]); // 알림 로그 추가
+                setNotifications(prev => [body, ...prev]);
 
                 if (body.includes("새 주문")) {
                     const parts = body.split("주문번호: ");
                     if (parts.length > 1) {
                         const orderId = parts[1].trim();
-                        const menuPart = body.split("]")[0]; // "[메뉴명" 가져오기
+                        const menuPart = body.split("]")[0];
 
                         setActiveOrders(prev => {
                             if (prev.find(o => o.id === orderId)) return prev;
-                            return [...prev, {id: orderId, text: body, title: menuPart + "]"}];
+                            return [...prev, {id: orderId, text: body, title: menuPart + "]", status: '주문 대기중'}];
                         });
                     }
                 }
@@ -74,7 +73,6 @@ function Owner() {
 
     }, [selectedOrderId, stompClient]);
 
-
     // 3. 메시지 전송
     const sendChatMessage = () => {
         if (stompClient && chatInput && selectedOrderId) {
@@ -94,6 +92,22 @@ function Owner() {
             body: JSON.stringify({orderId: orderId})
         }).then(() => {
             alert("주문(" + orderId + ")을 수락했습니다!");
+            setActiveOrders(prev => prev.map(o => o.id === orderId ? {...o, status: '주문 수락'} : o));
+        });
+    };
+
+    // 5. 주문 거절
+    const rejectOrder = (orderId) => {
+        if (!window.confirm("정말 거절하시겠습니까?")) return;
+
+        fetch('http://localhost:8080/orders/reject', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({orderId: orderId})
+        }).then(() => {
+            alert("주문을 거절했습니다.");
+            setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+            if (selectedOrderId === orderId) setSelectedOrderId(null);
         });
     };
 
@@ -121,35 +135,64 @@ function Owner() {
                     >
                         <div style={{fontWeight: 'bold'}}>{order.title}</div>
                         <div style={{fontSize: '11px', color: '#888'}}>ID: {order.id.substring(0, 8)}...</div>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                acceptOrder(order.id);
-                            }}
-                            style={{
-                                marginTop: '5px',
-                                background: '#ff5722',
-                                color: 'white',
-                                border: 'none',
+
+                        {order.status === '주문 대기중' ? (
+                            <div style={{marginTop: '8px', display: 'flex', gap: '5px'}}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        acceptOrder(order.id);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        background: '#4CAF50',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '5px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    수락
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        rejectOrder(order.id);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        background: '#F44336',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '5px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    거절
+                                </button>
+                            </div>
+                        ) : (
+                            <div style={{
+                                marginTop: '8px',
+                                color: 'green',
+                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                textAlign: 'center',
+                                background: '#e8f5e9',
                                 padding: '5px',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            접수하기
-                        </button>
+                                borderRadius: '4px'
+                            }}>
+                                ✅ 접수됨 (조리중)
+                            </div>
+                        )}
                     </div>
                 ))}
-
-                <hr/>
-                <input id="manualId" placeholder="기존 주문ID 입력" style={{width: '200px'}}/>
-                <button onClick={() => setSelectedOrderId(document.getElementById('manualId').value.trim())}>
-                    채팅방 열기
-                </button>
             </div>
 
             <div style={{flex: 1, padding: '20px', display: 'flex', flexDirection: 'column'}}>
-                {selectedOrderId ? (
+                {selectedOrderId && activeOrders.find(o => o.id === selectedOrderId)?.status === '주문 수락' ? (
                     <>
                         <h3>💬 1:1 문의 (주문번호: {selectedOrderId})</h3>
 
@@ -163,8 +206,7 @@ function Owner() {
                             marginBottom: '10px'
                         }}>
                             {chatMessages.length === 0 &&
-                                <div style={{textAlign: 'center', color: '#ccc', marginTop: '20%annels'}}>대화 내용이
-                                    없습니다.</div>}
+                                <div style={{textAlign: 'center', color: '#ccc', marginTop: '20%'}}>대화 내용이 없습니다.</div>}
                             {chatMessages.map((msg, idx) => (
                                 <div key={idx}
                                      style={{textAlign: msg.sender === '사장님' ? 'right' : 'left', margin: '5px 0'}}>
@@ -202,7 +244,8 @@ function Owner() {
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '4px',
-                                fontSize: '16px'
+                                fontSize: '16px',
+                                cursor: 'pointer'
                             }}>전송
                             </button>
                         </div>
@@ -213,9 +256,17 @@ function Owner() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#aaa'
+                        color: '#aaa',
+                        flexDirection: 'column'
                     }}>
-                        <h2>왼쪽 목록에서 주문을 선택해주세요.</h2>
+                        {selectedOrderId ? (
+                            <>
+                                <h2>🚫 채팅 불가</h2>
+                                <p>주문을 수락해야 채팅을 할 수 있습니다.</p>
+                            </>
+                        ) : (
+                            <h2>👈 왼쪽 목록에서 주문을 선택해주세요.</h2>
+                        )}
                     </div>
                 )}
             </div>
