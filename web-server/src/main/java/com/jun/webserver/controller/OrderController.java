@@ -54,4 +54,20 @@ public class OrderController {
         return "수락 처리 완료";
     }
 
+    @PostMapping("/orders/reject")
+    public String rejectOrder(@RequestBody OrderAcceptDto requestDto) {
+        String orderId = requestDto.getOrderId();
+        var grpcRequest = com.jun.grpc.order.UpdateOrderStatusRequest.newBuilder()
+                .setOrderId(orderId)
+                .setStatus("주문 취소")
+                .build();
+
+        UpdateOrderStatusResponse response = orderStub.updateOrderStatus(grpcRequest);
+
+        String message = "[알림] 주문(" + response.getOrderId() + ")이 가게 사정으로 취소되었습니다.";
+        messagingTemplate.convertAndSend("/sub/orders", message);
+
+        return "주문 취소 처리 완료";
+    }
+
 }
