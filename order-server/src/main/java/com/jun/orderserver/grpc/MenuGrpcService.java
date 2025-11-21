@@ -22,19 +22,11 @@ public class MenuGrpcService extends MenuServiceGrpc.MenuServiceImplBase {
     @Override
     public void addMenu(MenuRequest request, StreamObserver<MenuResponse> responseObserver) {
 
-        Menu menu = Menu.builder()
-                .name(request.getName())
-                .price(request.getPrice())
-                .description(request.getDescription())
-                .build();
+        Menu menu = buildMenu(request);
 
-        menuRepository.save(menu);
+        saveMenu(menu);
 
-        MenuResponse response = MenuResponse.newBuilder()
-                .setId(menu.getId())
-                .setName(menu.getName())
-                .setPrice(menu.getPrice())
-                .build();
+        MenuResponse response = createResponse(menu);
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -42,19 +34,49 @@ public class MenuGrpcService extends MenuServiceGrpc.MenuServiceImplBase {
 
     @Override
     public void getMenus(Empty request, StreamObserver<MenuListResponse> responseObserver) {
-        List<MenuResponse> menus = menuRepository.findAll().stream()
+        List<MenuResponse> menus = getMenuResponse();
+
+        MenuListResponse response = createResponse(menus);
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    private Menu buildMenu(MenuRequest request) {
+        return Menu.builder()
+                .name(request.getName())
+                .price(request.getPrice())
+                .description(request.getDescription())
+                .build();
+    }
+
+    private List<MenuResponse> getMenuResponse() {
+        return menuRepository.findAll().stream()
                 .map(m -> MenuResponse.newBuilder()
                         .setId(m.getId())
                         .setName(m.getName())
                         .setPrice(m.getPrice())
                         .build())
                 .collect(Collectors.toList());
+    }
 
-        MenuListResponse response = MenuListResponse.newBuilder()
+    private void saveMenu(Menu menu) {
+        menuRepository.save(menu);
+        System.out.println("[메뉴 등록] " + menu.getName());
+    }
+
+    private MenuResponse createResponse(Menu menu) {
+        return MenuResponse.newBuilder()
+                .setId(menu.getId())
+                .setName(menu.getName())
+                .setPrice(menu.getPrice())
+                .build();
+    }
+
+    private MenuListResponse createResponse(List<MenuResponse> menus) {
+        return MenuListResponse.newBuilder()
                 .addAllMenus(menus)
                 .build();
-
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
     }
 }
+
