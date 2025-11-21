@@ -9,17 +9,15 @@ import com.jun.orderserver.domain.Order;
 import com.jun.orderserver.repository.OrderRepository;
 import io.grpc.stub.StreamObserver;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.transaction.annotation.Transactional;
 
 @GrpcService
+@RequiredArgsConstructor
 public class OrderGrpcService extends OrderServiceImplBase {
 
     private final OrderRepository orderRepository;
-
-    OrderGrpcService(OrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
-    }
 
     @Override
     public void createOrder(CreateOrderRequest request, StreamObserver<CreateOrderResponse> responseObserver) {
@@ -56,7 +54,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
                 .restaurantId(request.getRestaurantId())
                 .menuName(request.getMenuName())
                 .price(request.getPrice())
-                .status("주문 확인중")
+                .status("주문 대기중")
                 .build();
 
     }
@@ -69,7 +67,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
     private CreateOrderResponse createResponse(String orderId) {
         return CreateOrderResponse.newBuilder()
                 .setOrderId(orderId)
-                .setStatus("PENDING")
+                .setStatus("주문 대기중")
                 .setMessage("주문이 성공적으로 접수되었습니다.")
                 .build();
     }
