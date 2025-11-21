@@ -13,6 +13,9 @@ function Customer() {
     // 기존 주문 불러오기용 입력값
     const [manualOrderId, setManualOrderId] = useState("");
     const [isChatEnabled, setIsChatEnabled] = useState(false);
+    const [menuList, setMenuList] = useState([]);
+    const [selectedMenuName, setSelectedMenuName] = useState("");
+    const [selectedMenuPrice, setSelectedMenuPrice] = useState(null);
 
     // 1. 웹소켓 연결
     useEffect(() => {
@@ -41,6 +44,16 @@ function Customer() {
         return () => {
             if (client) client.disconnect();
         };
+    }, []);
+
+    useEffect(() => {
+        fetch('http://localhost:8080/menus')
+            .then(res => res.json())
+            .then(data => {
+                console.log("메뉴판 로드:", data);
+                setMenuList(data);
+            })
+            .catch(err => console.error("메뉴 로드 실패:", err));
     }, []);
 
     // 2. 주문번호가 생기면 채팅방 구독 & 내역 조회
@@ -93,8 +106,8 @@ function Customer() {
             body: JSON.stringify({
                 customerId: "customer1",
                 restaurantId: "store1",
-                menuName: "황금올리브 치킨",
-                price: 23000
+                menuName: selectedMenuName,
+                price: parseInt(selectedMenuPrice)
             })
         })
             .then(res => res.text())
@@ -124,10 +137,54 @@ function Customer() {
         <div style={{padding: '20px'}}>
             <h2>👤 고객 페이지</h2>
 
+            <div style={{marginBottom: '20px'}}>
+                <h3>📜 메뉴판</h3>
+                <div style={{display: 'flex', gap: '10px', overflowX: 'auto'}}>
+                    {menuList.length === 0 && <p>등록된 메뉴가 없습니다.</p>}
+                    {menuList.map(menu => (
+                        <div
+                            key={menu.id}
+                            onClick={() => {
+                                setSelectedMenuName(menu.name);
+                                setSelectedMenuPrice(menu.price);
+                            }}
+                            style={{
+                                border: selectedMenuName === menu.name ? '2px solid #ff5722' : '1px solid #ccc',
+                                padding: '15px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                minWidth: '120px',
+                                textAlign: 'center',
+                                background: selectedMenuName === menu.name ? '#fff3e0' : 'white'
+                            }}
+                        >
+                            <div style={{fontWeight: 'bold', fontSize: '1.1em'}}>{menu.name}</div>
+                            <div>{menu.price.toLocaleString()}원</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div style={{border: '1px solid #ddd', padding: '10px', marginBottom: '20px'}}>
-                <h3>🍗 메뉴 주문 (신규)</h3>
-                <p>메뉴: 황금올리브 치킨 (23,000원)</p>
-                <button onClick={order}>주문하기</button>
+                <h3>🛒 주문하기</h3>
+                <div>
+                    <label>메뉴: </label>
+                    <input value={selectedMenuName} onChange={(e) => setSelectedMenuName(e.target.value)}
+                           style={{marginRight: '10px'}}/>
+                    <label>가격: </label>
+                    <input type="number" value={selectedMenuPrice}
+                           onChange={(e) => setSelectedMenuPrice(e.target.value)} style={{width: '80px'}}/>
+                </div>
+                <button onClick={order} style={{
+                    marginTop: '10px',
+                    padding: '10px 20px',
+                    background: '#ff5722',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer'
+                }}>
+                    이 메뉴로 주문하기
+                </button>
                 <p style={{color: 'blue', fontWeight: 'bold'}}>{orderResult}</p>
             </div>
 

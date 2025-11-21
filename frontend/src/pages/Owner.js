@@ -11,6 +11,8 @@ function Owner() {
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState("");
     const chatSubscriptionRef = useRef(null);
+    const [menuName, setMenuName] = useState("");
+    const [menuPrice, setMenuPrice] = useState("");
 
     // 1. 웹소켓 연결
     useEffect(() => {
@@ -111,10 +113,64 @@ function Owner() {
         });
     };
 
+    const addMenu = () => {
+        if (!menuName || !menuPrice) {
+            alert("메뉴 이름과 가격을 입력해주세요.");
+            return;
+        }
+
+        fetch('http://localhost:8080/menus', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: menuName,
+                price: parseInt(menuPrice),
+                description: "사장님 추천 메뉴"
+            })
+        })
+            .then(res => res.text())
+            .then(msg => {
+                alert(msg);
+                setMenuName("");
+                setMenuPrice("");
+            })
+            .catch(err => alert("메뉴 등록 실패"));
+    };
+
     return (
         <div style={{display: 'flex', height: '100vh'}}>
 
             <div style={{width: '350px', borderRight: '1px solid #ccc', padding: '10px', background: '#f7f7f7'}}>
+                <div style={{
+                    background: 'white',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: '1px solid #ddd',
+                    marginBottom: '15px'
+                }}>
+                    <h4>🍔 새 메뉴 등록</h4>
+                    <input
+                        placeholder="메뉴명 (예: 양념치킨)"
+                        value={menuName} onChange={(e) => setMenuName(e.target.value)}
+                        style={{width: '100%', marginBottom: '5px', padding: '5px'}}
+                    />
+                    <input
+                        type="number" placeholder="가격 (예: 20000)"
+                        value={menuPrice} onChange={(e) => setMenuPrice(e.target.value)}
+                        style={{width: '100%', marginBottom: '5px', padding: '5px'}}
+                    />
+                    <button onClick={addMenu} style={{
+                        width: '100%',
+                        background: '#673ab7',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px',
+                        cursor: 'pointer'
+                    }}>
+                        메뉴 추가하기
+                    </button>
+                </div>
+                
                 <h3>👨‍🍳 접수된 주문</h3>
                 <div style={{fontSize: '12px', color: '#666', marginBottom: '10px'}}>
                     * 새 주문이 들어오면 여기에 카드가 생깁니다.
