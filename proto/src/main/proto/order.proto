@@ -11,6 +11,11 @@ service OrderService {
   rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
 }
 
+service MenuService {
+  rpc AddMenu (MenuRequest) returns (MenuResponse);
+  rpc GetMenus (Empty) returns (MenuListResponse);
+}
+
 message CreateOrderRequest {
   string customerId = 1;
   string restaurantId = 2;
@@ -32,4 +37,22 @@ message UpdateOrderStatusRequest {
 message UpdateOrderStatusResponse {
   string orderId = 1;
   string status = 2;
+}
+
+message MenuRequest {
+  string name = 1;
+  int32 price = 2;
+  string description = 3;
+}
+
+message MenuResponse {
+  int64 id = 1;
+  string name = 2;
+  int32 price = 3;
+}
+
+message Empty {}
+
+message MenuListResponse {
+  repeated MenuResponse menus = 1;
 }
