@@ -79,7 +79,7 @@ public class OrderController {
 
         orderStub.updateOrderStatus(grpcRequest);
 
-        String message = status.getMessage();
+        String message = status.getMessage() + " 주문번호: " + orderId;
 
         messagingTemplate.convertAndSend("/sub/orders", message);
 
