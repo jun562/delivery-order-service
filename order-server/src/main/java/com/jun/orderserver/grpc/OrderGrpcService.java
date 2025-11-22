@@ -6,6 +6,7 @@ import com.jun.grpc.order.OrderServiceGrpc.OrderServiceImplBase;
 import com.jun.grpc.order.UpdateOrderStatusRequest;
 import com.jun.grpc.order.UpdateOrderStatusResponse;
 import com.jun.orderserver.domain.Order;
+import com.jun.orderserver.domain.OrderStatus;
 import com.jun.orderserver.repository.OrderRepository;
 import io.grpc.stub.StreamObserver;
 import java.util.UUID;
@@ -37,7 +38,9 @@ public class OrderGrpcService extends OrderServiceImplBase {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new RuntimeException("주문 내역을 찾을 수 없습니다."));
 
-        order.changeStatus(request.getStatus());
+        OrderStatus newStatus = OrderStatus.valueOf(request.getStatus());
+
+        order.changeStatus(newStatus);
 
         responseObserver.onNext(createUpdatedOrderResponse(order));
         responseObserver.onCompleted();
@@ -54,7 +57,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
                 .restaurantId(request.getRestaurantId())
                 .menuName(request.getMenuName())
                 .price(request.getPrice())
-                .status("주문 대기중")
+                .status(OrderStatus.PENDING)
                 .build();
 
     }
@@ -67,7 +70,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
     private CreateOrderResponse createResponse(String orderId) {
         return CreateOrderResponse.newBuilder()
                 .setOrderId(orderId)
-                .setStatus("주문 대기중")
+                .setStatus(OrderStatus.PENDING.name())
                 .setMessage("주문이 성공적으로 접수되었습니다.")
                 .build();
     }
@@ -75,7 +78,7 @@ public class OrderGrpcService extends OrderServiceImplBase {
     private UpdateOrderStatusResponse createUpdatedOrderResponse(Order order) {
         return UpdateOrderStatusResponse.newBuilder()
                 .setOrderId(order.getOrderId())
-                .setStatus(order.getStatus())
+                .setStatus(order.getStatus().name())
                 .build();
     }
 }

@@ -2,6 +2,8 @@ package com.jun.orderserver.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -24,9 +26,10 @@ public class Order {
     private String restaurantId;
     private String menuName;
     private Integer price;
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
 
-    public void changeStatus(String newStatus) {
+    public void changeStatus(OrderStatus newStatus) {
         this.status = newStatus;
     }
 }
