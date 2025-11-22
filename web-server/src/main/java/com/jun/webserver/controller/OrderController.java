@@ -3,9 +3,10 @@ package com.jun.webserver.controller;
 import com.jun.grpc.order.CreateOrderRequest;
 import com.jun.grpc.order.CreateOrderResponse;
 import com.jun.grpc.order.OrderServiceGrpc;
-import com.jun.grpc.order.UpdateOrderStatusResponse;
-import com.jun.webserver.dto.OrderAcceptDto;
+import com.jun.grpc.order.UpdateOrderStatusRequest;
+import com.jun.webserver.domain.OrderStatus;
 import com.jun.webserver.dto.OrderRequestDto;
+import java.util.Map;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -38,36 +39,26 @@ public class OrderController {
         return "주문 성공! 주문번호: " + response.getOrderId();
     }
 
-    @PostMapping("/orders/accept")
-    public String acceptOrder(@RequestBody OrderAcceptDto requestDto) {
-        String orderId = requestDto.getOrderId();
-        var grpcRequest = com.jun.grpc.order.UpdateOrderStatusRequest.newBuilder()
+    // 통합 상태 변경 API (수락, 거절, 조리완료, 배달시작, 배달완료 모두 처리)
+    @PostMapping("/orders/status")
+    public String changeOrderStatus(@RequestBody Map<String, String> payload) {
+        String orderId = payload.get("orderId");
+        String statusStr = payload.get("status");
+
+        OrderStatus status = OrderStatus.valueOf(statusStr);
+
+        UpdateOrderStatusRequest grpcRequest = com.jun.grpc.order.UpdateOrderStatusRequest.newBuilder()
                 .setOrderId(orderId)
-                .setStatus("조리중")
+                .setStatus(status.name())
                 .build();
 
-        UpdateOrderStatusResponse response = orderStub.updateOrderStatus(grpcRequest);
+        orderStub.updateOrderStatus(grpcRequest);
 
-        String message = "[알림] 주문(" + response.getOrderId() + ")이 수락되어 '조리 중'입니다!";
+        String message = status.getMessage();
+
         messagingTemplate.convertAndSend("/sub/orders", message);
 
-        return "수락 처리 완료";
-    }
-
-    @PostMapping("/orders/reject")
-    public String rejectOrder(@RequestBody OrderAcceptDto requestDto) {
-        String orderId = requestDto.getOrderId();
-        var grpcRequest = com.jun.grpc.order.UpdateOrderStatusRequest.newBuilder()
-                .setOrderId(orderId)
-                .setStatus("주문 취소")
-                .build();
-
-        UpdateOrderStatusResponse response = orderStub.updateOrderStatus(grpcRequest);
-
-        String message = "[알림] 주문(" + response.getOrderId() + ")이 가게 사정으로 취소되었습니다.";
-        messagingTemplate.convertAndSend("/sub/orders", message);
-
-        return "주문 취소 처리 완료";
+        return "상태 변경 완료: " + status.name();
     }
 
 }
