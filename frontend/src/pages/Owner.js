@@ -4,7 +4,7 @@ import {Stomp} from '@stomp/stompjs';
 
 function Owner() {
     const [stompClient, setStompClient] = useState(null);
-    const [activeOrders, setActiveOrders] = useState([]);   // 주문 목록
+    const [activeOrders, setActiveOrders] = useState([]); // 주문 목록
 
     const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
@@ -25,7 +25,7 @@ function Owner() {
             client.subscribe('/sub/orders', (msg) => {
                 const body = msg.body;
 
-                // "새 주문" 알림이 오면 목록에 추가
+                // "새 주문" 알림 처리
                 if (body.includes("새 주문")) {
                     const parts = body.split("주문번호: ");
                     if (parts.length > 1) {
@@ -36,6 +36,25 @@ function Owner() {
                             if (prev.find(o => o.id === orderId)) return prev;
                             return [...prev, {id: orderId, title: menuPart + "]", status: 'PENDING'}];
                         });
+                    }
+                }
+                // 상태 변경 알림 처리 (라이더가 변경했을 때 동기화)
+                else if (body.includes("주문번호:")) {
+                    const parts = body.split("주문번호: ");
+                    if (parts.length > 1) {
+                        const orderId = parts[1].split(")")[0].trim();
+                        let newStatus = null;
+                        if (body.includes("배달이 시작")) newStatus = 'DELIVERING';
+                        else if (body.includes("배달이 완료")) newStatus = 'COMPLETE';
+
+                        if (newStatus) {
+                            setActiveOrders(prev => prev.map(o =>
+                                o.id === orderId ? {...o, status: newStatus} : o
+                            ));
+                            if (newStatus === 'COMPLETE') {
+                                setTimeout(() => setActiveOrders(prev => prev.filter(o => o.id !== orderId)), 2000);
+                            }
+                        }
                     }
                 }
             });
@@ -51,11 +70,9 @@ function Owner() {
     useEffect(() => {
         if (!stompClient || !selectedOrderId) return;
 
-        if (chatSubscriptionRef.current) {
-            chatSubscriptionRef.current.unsubscribe();
-        }
+        if (chatSubscriptionRef.current) chatSubscriptionRef.current.unsubscribe();
 
-        console.log("💬 사장님 채팅방 입장: " + selectedOrderId);
+        console.log("💬 채팅방 입장: " + selectedOrderId);
         setChatMessages([]);
 
         const subscription = stompClient.subscribe(`/sub/chat/${selectedOrderId}`, (msg) => {
@@ -71,7 +88,6 @@ function Owner() {
 
     }, [selectedOrderId, stompClient]);
 
-
     // 3. 메시지 전송
     const sendChatMessage = () => {
         if (stompClient && chatInput && selectedOrderId) {
@@ -83,7 +99,7 @@ function Owner() {
         }
     };
 
-    // 4. 통합 상태 변경 함수 (수락, 거절, 조리완료 등)
+    // 4. 상태 변경 (수락, 거절, 조리완료)
     const changeStatus = (orderId, status) => {
         if (status === 'REJECTED' && !window.confirm("정말 거절하시겠습니까?")) return;
 
@@ -96,12 +112,8 @@ function Owner() {
                 o.id === orderId ? {...o, status: status} : o
             ));
 
-            // 거절되거나 완료된 주문은 목록에서 제거
-            if (status === 'REJECTED' || status === 'COMPLETE') {
-                setTimeout(() => {
-                    setActiveOrders(prev => prev.filter(o => o.id !== orderId));
-                    if (selectedOrderId === orderId) setSelectedOrderId(null);
-                }, 1000);
+            if (status === 'REJECTED') {
+                setTimeout(() => setActiveOrders(prev => prev.filter(o => o.id !== orderId)), 1000);
             }
         });
     };
@@ -115,7 +127,7 @@ function Owner() {
         fetch('http://localhost:8080/menus', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name: menuName, price: parseInt(menuPrice), description: "추천 메뉴"})
+            body: JSON.stringify({name: menuName, price: parseInt(menuPrice), description: "추천"})
         }).then(() => {
             alert("메뉴 등록 완료!");
             setMenuName("");
@@ -126,6 +138,7 @@ function Owner() {
     return (
         <div style={{display: 'flex', height: '100vh'}}>
 
+            {/* 왼쪽: 메뉴 등록 & 주문 목록 */}
             <div style={{
                 width: '350px',
                 borderRight: '1px solid #ccc',
@@ -135,6 +148,7 @@ function Owner() {
                 flexDirection: 'column'
             }}>
 
+                {/* 메뉴 등록 */}
                 <div style={{
                     background: 'white',
                     padding: '10px',
@@ -160,8 +174,6 @@ function Owner() {
                 </div>
 
                 <h3>👨‍🍳 접수된 주문</h3>
-                {activeOrders.length === 0 && <p>대기 중인 주문이 없습니다.</p>}
-
                 {activeOrders.map(order => (
                     <div
                         key={order.id}
@@ -177,103 +189,79 @@ function Owner() {
                         <div style={{fontSize: '11px', color: '#888'}}>ID: {order.id.substring(0, 8)}...</div>
 
                         <div style={{marginTop: '8px'}}>
-
+                            {/* 상태별 UI */}
                             {order.status === 'PENDING' && (
                                 <div style={{display: 'flex', gap: '5px'}}>
                                     <button onClick={(e) => {
                                         e.stopPropagation();
                                         changeStatus(order.id, 'ACCEPTED');
-                                    }}
-                                            style={{
-                                                flex: 1,
-                                                background: '#4CAF50',
-                                                color: 'white',
-                                                border: 'none',
-                                                padding: '5px',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer'
-                                            }}>수락
+                                    }} style={{
+                                        flex: 1,
+                                        background: '#4CAF50',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '5px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}>수락
                                     </button>
                                     <button onClick={(e) => {
                                         e.stopPropagation();
                                         changeStatus(order.id, 'REJECTED');
-                                    }}
-                                            style={{
-                                                flex: 1,
-                                                background: '#F44336',
-                                                color: 'white',
-                                                border: 'none',
-                                                padding: '5px',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer'
-                                            }}>거절
+                                    }} style={{
+                                        flex: 1,
+                                        background: '#F44336',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '5px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}>거절
                                     </button>
                                 </div>
                             )}
-
                             {order.status === 'ACCEPTED' && (
                                 <button onClick={(e) => {
                                     e.stopPropagation();
                                     changeStatus(order.id, 'COOKED');
-                                }}
-                                        style={{
-                                            width: '100%',
-                                            background: '#FF9800',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '5px',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer'
-                                        }}>
-                                    🍳 조리 완료 (기사 호출)
-                                </button>
-                            )}
-
-                            {order.status === 'COOKED' && (
-                                <div style={{
-                                    color: '#FF9800',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
+                                }} style={{
+                                    width: '100%',
+                                    background: '#FF9800',
+                                    color: 'white',
+                                    border: 'none',
                                     padding: '5px',
-                                    background: '#fff3e0',
-                                    borderRadius: '4px'
-                                }}>
-                                    🛵 기사님 배차 대기중...
-                                </div>
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}>🍳 조리 완료</button>
                             )}
-
-                            {order.status === 'DELIVERING' && (
-                                <div style={{
-                                    color: '#2196F3',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
-                                    padding: '5px',
-                                    background: '#e3f2fd',
-                                    borderRadius: '4px'
-                                }}>
-                                    🚀 배달 중 (이동중)
-                                </div>
-                            )}
-
-                            {order.status === 'COMPLETE' && (
-                                <div style={{
-                                    color: 'green',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
-                                    padding: '5px',
-                                    background: '#e8f5e9',
-                                    borderRadius: '4px'
-                                }}>
-                                    ✅ 배달 완료됨
-                                </div>
-                            )}
+                            {order.status === 'COOKED' && <div style={{
+                                color: '#FF9800',
+                                fontWeight: 'bold',
+                                textAlign: 'center',
+                                background: '#fff3e0',
+                                padding: '5px'
+                            }}>🛵 기사님 대기중...</div>}
+                            {order.status === 'DELIVERING' && <div style={{
+                                color: '#2196F3',
+                                fontWeight: 'bold',
+                                textAlign: 'center',
+                                background: '#e3f2fd',
+                                padding: '5px'
+                            }}>🚀 배달 중</div>}
+                            {order.status === 'COMPLETE' && <div style={{
+                                color: 'green',
+                                fontWeight: 'bold',
+                                textAlign: 'center',
+                                background: '#e8f5e9',
+                                padding: '5px'
+                            }}>✅ 배달 완료</div>}
                         </div>
                     </div>
                 ))}
             </div>
 
+            {/* 오른쪽: 채팅창 */}
             <div style={{flex: 1, padding: '20px', display: 'flex', flexDirection: 'column'}}>
-
                 {selectedOrderId && activeOrders.find(o => o.id === selectedOrderId)?.status !== 'PENDING' ? (
                     <>
                         <h3>💬 1:1 문의 (주문번호: {selectedOrderId})</h3>
@@ -286,8 +274,6 @@ function Owner() {
                             background: '#fff',
                             marginBottom: '10px'
                         }}>
-                            {chatMessages.length === 0 &&
-                                <div style={{textAlign: 'center', color: '#ccc', marginTop: '20%'}}>대화 내용이 없습니다.</div>}
                             {chatMessages.map((msg, idx) => (
                                 <div key={idx}
                                      style={{textAlign: msg.sender === '사장님' ? 'right' : 'left', margin: '5px 0'}}>

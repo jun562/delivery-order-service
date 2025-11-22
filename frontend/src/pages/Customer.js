@@ -16,6 +16,7 @@ function Customer() {
     const [menuList, setMenuList] = useState([]);
     const [selectedMenuName, setSelectedMenuName] = useState("");
     const [selectedMenuPrice, setSelectedMenuPrice] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
 
     // 1. 웹소켓 연결
     useEffect(() => {
@@ -24,17 +25,29 @@ function Customer() {
 
         client.connect({}, () => {
             console.log('Connected!');
+            setIsConnected(true);
 
             client.subscribe('/sub/orders', (msg) => {
                 const body = msg.body;
 
-                if (body.includes("조리 중")) {
-                    alert("주문이 수락되었습니다! 채팅이 가능합니다.");
-                    setIsChatEnabled(true);
-                } else if (body.includes("취소되었습니다")) {
-                    alert("주문이 취소되었습니다.");
-                    setIsChatEnabled(false);
-                    setCurrentOrderId(null);
+                // 현재 주문번호와 관련된 알림인지 확인 (혹은 전체 알림)
+                if (currentOrderId && body.includes(currentOrderId)) {
+
+                    // 2. 상태별 알림 띄우기
+                    if (body.includes("주문이 수락")) {
+                        alert("주문이 수락되었습니다! (조리 중)");
+                        setIsChatEnabled(true); // 채팅 활성화
+                    } else if (body.includes("조리가 완료")) {
+                        alert("조리가 완료되었습니다!");
+                    } else if (body.includes("배달이 시작")) {
+                        alert("배달이 시작되었습니다!");
+                    } else if (body.includes("배달이 완료")) {
+                        alert(" 배달이 완료되었습니다. 맛있게 드세요!");
+                    } else if (body.includes("취소") || body.includes("거절")) {
+                        alert("주문이 가게 사정으로 취소되었습니다.");
+                        setCurrentOrderId(null);
+                        setIsChatEnabled(false);
+                    }
                 }
             });
         });
@@ -44,7 +57,7 @@ function Customer() {
         return () => {
             if (client) client.disconnect();
         };
-    }, []);
+    }, [currentOrderId]);
 
     useEffect(() => {
         fetch('http://localhost:8080/menus')
@@ -58,7 +71,7 @@ function Customer() {
 
     // 2. 주문번호가 생기면 채팅방 구독 & 내역 조회
     useEffect(() => {
-        if (!stompClient || !currentOrderId) return;
+        if (!stompClient || !currentOrderId || !isConnected) return;
 
         console.log("💬 채팅방 입장: " + currentOrderId);
 
