@@ -2,16 +2,22 @@ package com.jun.webserver.controller;
 
 import com.jun.grpc.order.CreateOrderRequest;
 import com.jun.grpc.order.CreateOrderResponse;
+import com.jun.grpc.order.GetOrdersRequest;
+import com.jun.grpc.order.GetOrdersResponse;
 import com.jun.grpc.order.OrderServiceGrpc;
 import com.jun.grpc.order.UpdateOrderStatusRequest;
 import com.jun.webserver.domain.OrderStatus;
 import com.jun.webserver.dto.OrderRequestDto;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,6 +27,25 @@ public class OrderController {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @GetMapping("/orders")
+    public List<Map<String, Object>> getOrders(@RequestParam(required = false, defaultValue = "") String customerId) {
+
+        GetOrdersRequest request = GetOrdersRequest.newBuilder()
+                .setCustomerId(customerId)
+                .build();
+
+        GetOrdersResponse response = orderStub.getOrders(request);
+
+        return response.getOrdersList().stream()
+                .map(info -> Map.<String, Object>of(
+                        "orderId", info.getOrderId(),
+                        "menuName", info.getMenuName(),
+                        "price", info.getPrice(),
+                        "status", info.getStatus()
+                ))
+                .collect(Collectors.toList());
+    }
 
     @PostMapping("/orders")
     public String createOrder(@RequestBody OrderRequestDto requestDto) {

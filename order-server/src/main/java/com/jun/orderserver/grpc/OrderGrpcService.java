@@ -2,6 +2,9 @@ package com.jun.orderserver.grpc;
 
 import com.jun.grpc.order.CreateOrderRequest;
 import com.jun.grpc.order.CreateOrderResponse;
+import com.jun.grpc.order.GetOrdersRequest;
+import com.jun.grpc.order.GetOrdersResponse;
+import com.jun.grpc.order.OrderInfo;
 import com.jun.grpc.order.OrderServiceGrpc.OrderServiceImplBase;
 import com.jun.grpc.order.UpdateOrderStatusRequest;
 import com.jun.grpc.order.UpdateOrderStatusResponse;
@@ -9,7 +12,9 @@ import com.jun.orderserver.domain.Order;
 import com.jun.orderserver.domain.OrderStatus;
 import com.jun.orderserver.repository.OrderRepository;
 import io.grpc.stub.StreamObserver;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +24,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderGrpcService extends OrderServiceImplBase {
 
     private final OrderRepository orderRepository;
+
+    @Override
+    public void getOrders(GetOrdersRequest request, StreamObserver<GetOrdersResponse> responseObserver) {
+        List<Order> orders = orderRepository.findAll();
+
+        List<OrderInfo> orderInfos = buildOrderInfos(orders);
+
+        responseObserver.onNext(createResponse(orderInfos));
+        responseObserver.onCompleted();
+    }
 
     @Override
     public void createOrder(CreateOrderRequest request, StreamObserver<CreateOrderResponse> responseObserver) {
@@ -50,6 +65,19 @@ public class OrderGrpcService extends OrderServiceImplBase {
         return UUID.randomUUID().toString();
     }
 
+    private List<OrderInfo> buildOrderInfos(List<Order> orders) {
+        return orders.stream()
+                .map(order -> OrderInfo.newBuilder()
+                        .setOrderId(order.getOrderId())
+                        .setCustomerId(order.getCustomerId())
+                        .setRestaurantId(order.getRestaurantId())
+                        .setMenuName(order.getMenuName())
+                        .setPrice(order.getPrice())
+                        .setStatus(order.getStatus().name()) // Enum -> String
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     private Order buildOrder(String orderId, CreateOrderRequest request) {
         return Order.builder()
                 .orderId(orderId)
@@ -65,6 +93,12 @@ public class OrderGrpcService extends OrderServiceImplBase {
     private void saveOrder(Order order, String orderId) {
         orderRepository.save(order);
         System.out.println("[DB 저장 완료] Order ID: " + orderId);
+    }
+
+    private GetOrdersResponse createResponse(List<OrderInfo> orderInfos) {
+        return GetOrdersResponse.newBuilder()
+                .addAllOrders(orderInfos)
+                .build();
     }
 
     private CreateOrderResponse createResponse(String orderId) {

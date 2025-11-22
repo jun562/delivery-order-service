@@ -9,11 +9,29 @@ option java_multiple_files = true;
 service OrderService {
   rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
   rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+  rpc GetOrders (GetOrdersRequest) returns (GetOrdersResponse);
 }
 
 service MenuService {
   rpc AddMenu (MenuRequest) returns (MenuResponse);
   rpc GetMenus (Empty) returns (MenuListResponse);
+}
+
+message GetOrdersRequest {
+  string customerId = 1;
+}
+
+message GetOrdersResponse {
+  repeated OrderInfo orders = 1;
+}
+
+message OrderInfo {
+  string orderId = 1;
+  string customerId = 2;
+  string restaurantId = 3;
+  string menuName = 4;
+  int32 price = 5;
+  string status = 6;
 }
 
 message CreateOrderRequest {
