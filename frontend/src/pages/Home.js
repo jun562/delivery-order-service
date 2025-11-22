@@ -12,6 +12,11 @@ function Home() {
                 <Link to="/owner">
                     <button style={{padding: '20px', fontSize: '20px', backgroundColor: '#ffeba7'}}>사장님으로 관리하기</button>
                 </Link>
+                <Link to="/rider">
+                    <button style={{padding: '20px', fontSize: '20px', backgroundColor: '#e3f2fd', cursor: 'pointer'}}>
+                        라이더로 시작하기
+                    </button>
+                </Link>
             </div>
         </div>
     );
