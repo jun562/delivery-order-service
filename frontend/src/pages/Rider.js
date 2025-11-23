@@ -1,12 +1,14 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import SockJS from 'sockjs-client';
-import {Stomp} from '@stomp/stompjs';
+import { Stomp } from '@stomp/stompjs';
+import '../styles.css';
 
 function Rider() {
     const [availableOrders, setAvailableOrders] = useState([]);
     const [myDelivery, setMyDelivery] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
 
-    // 2. 주문 목록 가져오기 (useCallback 사용)
     const loadDeliveryCalls = useCallback(() => {
         fetch('http://localhost:8080/orders')
             .then(res => res.json())
@@ -20,7 +22,7 @@ function Rider() {
             .catch(e => console.error("목록 로드 실패:", e));
     }, []);
 
-    // 1. 웹소켓 연결
+    // 웹소켓 연결
     useEffect(() => {
         loadDeliveryCalls();
 
@@ -29,12 +31,13 @@ function Rider() {
 
         client.connect({}, () => {
             console.log('Rider Connected!');
+            setIsConnected(true);
 
             client.subscribe('/sub/orders', (msg) => {
                 const body = msg.body;
 
                 if (body.includes("배달 대기") || body.includes("조리가 완료")) {
-                    console.log("🔔 새 콜 발생! 목록을 갱신합니다.");
+                    console.log("새 콜 발생! 목록을 갱신합니다.");
                     loadDeliveryCalls();
                 }
             });
@@ -43,113 +46,114 @@ function Rider() {
         return () => {
             if (client && client.connected) client.disconnect();
         };
-    }, [loadDeliveryCalls]); // 의존성 추가
+    }, [loadDeliveryCalls]);
 
-    // 3. 상태 변경 (배차 받기 / 배달 완료)
     const updateStatus = (orderId, status) => {
         fetch('http://localhost:8080/orders/status', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({orderId, status})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, status })
         }).then(() => {
             if (status === 'DELIVERING') {
                 const order = availableOrders.find(o => o.orderId === orderId);
                 setMyDelivery(order);
                 setAvailableOrders(prev => prev.filter(o => o.orderId !== orderId));
-                alert("배차 완료! 안전 운전하세요. 🛵");
+                alert("배차 완료! 안전 운전하세요.");
             } else if (status === 'COMPLETE') {
                 setMyDelivery(null);
-                alert("배달 완료! 수고하셨습니다. 🏁");
+                alert("배달 완료! 수고하셨습니다.");
             }
         });
     };
 
     return (
-        <div style={{padding: '20px', maxWidth: '600px', margin: '0 auto'}}>
-            <h2>🛵 라이더 페이지</h2>
-
-            {/* 1. 내 배달 현황 */}
-            {myDelivery ? (
-                <div style={{
-                    border: '2px solid #2196F3',
-                    padding: '20px',
-                    marginBottom: '30px',
-                    borderRadius: '10px',
-                    background: '#e3f2fd'
-                }}>
-                    <h3 style={{margin: '0 0 10px 0'}}>🚀 현재 배달 중...</h3>
-                    <p><b>메뉴:</b> {myDelivery.menuName}</p>
-                    <p><b>주문번호:</b> {myDelivery.orderId}</p>
-                    <button onClick={() => updateStatus(myDelivery.orderId, 'COMPLETE')}
-                            style={{
-                                width: '100%',
-                                padding: '15px',
-                                background: '#673ab7',
-                                color: 'white',
-                                border: 'none',
-                                fontSize: '18px',
-                                cursor: 'pointer',
-                                borderRadius: '5px'
-                            }}>
-                        배달 완료 확인
-                    </button>
+        <div className="page-container">
+            {/* Navigation Header */}
+            <nav className="nav-header">
+                <Link to="/" className="nav-back">
+                    ← 홈으로
+                </Link>
+                <h1 className="nav-title">라이더</h1>
+                <div className="nav-status">
+                    <span className={`connection-dot ${isConnected ? '' : 'disconnected'}`}></span>
+                    <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                        {isConnected ? '연결됨' : '연결중...'}
+                    </span>
                 </div>
-            ) : (
-                <div style={{
-                    marginBottom: '20px',
-                    color: '#666',
-                    padding: '20px',
-                    background: '#f5f5f5',
-                    borderRadius: '10px',
-                    textAlign: 'center'
-                }}>
-                    현재 배달 중인 건이 없습니다.
-                </div>
-            )}
+            </nav>
 
-            <hr/>
-
-            {/* 2. 콜 목록 */}
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                <h3>📡 배달 대기 목록</h3>
-                <button onClick={loadDeliveryCalls} style={{padding: '5px 10px', cursor: 'pointer'}}>🔄 수동 새로고침</button>
-            </div>
-
-            {availableOrders.length === 0 && <p style={{textAlign: 'center', color: '#999'}}>현재 대기 중인 콜이 없습니다.</p>}
-
-            {availableOrders.map(order => (
-                <div key={order.orderId} style={{
-                    border: '1px solid #ccc',
-                    padding: '15px',
-                    marginBottom: '10px',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    background: 'white',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                    <div>
-                        <div style={{fontWeight: 'bold', fontSize: '1.1em'}}>{order.menuName}</div>
-                        <div
-                            style={{fontSize: '12px', color: '#888'}}>{order.price ? order.price.toLocaleString() : 0}원
+            <div className="content-container">
+                {/* 현재 배달 중 */}
+                {myDelivery ? (
+                    <section className="section">
+                        <div className="card current-delivery">
+                            <div className="current-delivery-header">
+                                <span className="current-delivery-badge">배달 중</span>
+                            </div>
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '8px' }}>
+                                    {myDelivery.menuName}
+                                </div>
+                                <div style={{ color: '#666', fontSize: '0.9rem' }}>
+                                    주문번호: {myDelivery.orderId?.substring(0, 8)}...
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => updateStatus(myDelivery.orderId, 'COMPLETE')}
+                                className="btn btn-primary btn-block btn-lg"
+                            >
+                                배달 완료
+                            </button>
                         </div>
-                        <div style={{fontSize: '11px', color: '#aaa'}}>ID: {order.orderId.substring(0, 8)}...</div>
+                    </section>
+                ) : (
+                    <section className="section">
+                        <div className="card" style={{ textAlign: 'center', padding: '32px' }}>
+                            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🛵</div>
+                            <p style={{ color: '#666' }}>현재 배달 중인 건이 없습니다</p>
+                        </div>
+                    </section>
+                )}
+
+                {/* 배달 대기 목록 */}
+                <section className="section">
+                    <div className="section-header">
+                        <h2 className="section-title">📡 배달 대기 목록</h2>
+                        <button onClick={loadDeliveryCalls} className="btn btn-outline btn-sm">
+                            새로고침
+                        </button>
                     </div>
-                    <button onClick={() => updateStatus(order.orderId, 'DELIVERING')}
-                            style={{
-                                background: '#4CAF50',
-                                color: 'white',
-                                border: 'none',
-                                padding: '10px 20px',
-                                borderRadius: '5px',
-                                cursor: 'pointer',
-                                fontWeight: 'bold'
-                            }}>
-                        배차 받기
-                    </button>
-                </div>
-            ))}
+
+                    {availableOrders.length === 0 ? (
+                        <div className="card">
+                            <div className="empty-state">
+                                <div className="empty-state-icon">📭</div>
+                                <p className="empty-state-text">대기 중인 콜이 없습니다</p>
+                            </div>
+                        </div>
+                    ) : (
+                        availableOrders.map(order => (
+                            <div key={order.orderId} className="delivery-card">
+                                <div className="delivery-info">
+                                    <div className="delivery-menu">{order.menuName}</div>
+                                    <div className="delivery-price">
+                                        {order.price?.toLocaleString() || 0}원
+                                    </div>
+                                    <div className="delivery-id">
+                                        ID: {order.orderId?.substring(0, 8)}...
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => updateStatus(order.orderId, 'DELIVERING')}
+                                    className="btn btn-success"
+                                >
+                                    배차 받기
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </section>
+            </div>
         </div>
     );
 }
